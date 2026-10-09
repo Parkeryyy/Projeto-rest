@@ -1,0 +1,311 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projeto REST | Cliente Web</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #172554;
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+        }
+
+        header p {
+            margin: 0;
+            color: #cbd5e1;
+        }
+
+        main {
+            width: min(900px, 92%);
+            margin: 30px auto;
+        }
+
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px #0f172a12;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #1d4ed8;
+        }
+
+        label {
+            display: block;
+            margin: 12px 0 6px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            margin: 12px 8px 0 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .secondary {
+            background: #475569;
+        }
+
+        #status {
+            padding: 12px;
+            border-radius: 8px;
+            background: #f8fafc;
+            margin-top: 15px;
+            overflow-wrap: anywhere;
+        }
+
+        pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 18px;
+            border-radius: 10px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .hint {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Projeto REST</h1>
+        <p>Cliente Web • API Gateway • Autenticação JWT</p>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>🔐 Login</h2>
+            <p>Entre para acessar os recursos da API.</p>
+
+            <form id="loginForm">
+                <label for="usuario">Usuário</label>
+                <input
+                    id="usuario"
+                    name="usuario"
+                    value="admin"
+                    autocomplete="username"
+                    required
+                >
+
+                <label for="senha">Senha</label>
+                <input
+                    id="senha"
+                    name="senha"
+                    type="password"
+                    value="123"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button type="submit">Entrar</button>
+                <button type="button" class="secondary" id="logoutBtn">
+                    Sair
+                </button>
+            </form>
+
+            <div id="status" role="status" aria-live="polite">
+                Você ainda não fez login.
+            </div>
+            <p class="hint">
+                O token fica apenas na memória desta página e é perdido ao
+                recarregá-la.
+            </p>
+        </section>
+
+        <section class="card">
+            <h2>📚 Consultar livros</h2>
+            <p>Busca os livros por meio do API Gateway.</p>
+            <button id="livrosBtn" disabled>Carregar livros</button>
+        </section>
+
+        <section class="card">
+            <h2>👥 Consultar usuários</h2>
+            <p>Busca os usuários por meio do API Gateway.</p>
+            <button id="usuariosBtn" disabled>Carregar usuários</button>
+        </section>
+
+        <section class="card">
+            <h2>📄 Resposta da API</h2>
+            <pre id="resultado">Os resultados aparecerão aqui.</pre>
+        </section>
+    </main>
+
+    <footer>
+        Projeto acadêmico • Arquitetura REST com API Gateway
+    </footer>
+
+    <script>
+        const API_URL = "http://localhost:5000";
+
+        let token = null;
+
+        const loginForm = document.getElementById("loginForm");
+        const status = document.getElementById("status");
+        const resultado = document.getElementById("resultado");
+        const livrosBtn = document.getElementById("livrosBtn");
+        const usuariosBtn = document.getElementById("usuariosBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
+
+        function atualizarInterface() {
+            livrosBtn.disabled = !token;
+            usuariosBtn.disabled = !token;
+        }
+
+        function mostrarResultado(dados) {
+            resultado.textContent = JSON.stringify(dados, null, 2);
+        }
+
+        loginForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            status.textContent = "Realizando login...";
+            token = null;
+            atualizarInterface();
+
+            try {
+                const resposta = await fetch(`${API_URL}/login`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        usuario: document.getElementById("usuario").value,
+                        senha: document.getElementById("senha").value
+                    })
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        dados.mensagem || `Erro HTTP ${resposta.status}`
+                    );
+                }
+
+                token = dados.token;
+                atualizarInterface();
+                status.textContent = "Login realizado! Token JWT recebido.";
+                mostrarResultado({
+                    mensagem: "Login realizado com sucesso.",
+                    autenticado: true
+                });
+            } catch (erro) {
+                token = null;
+                atualizarInterface();
+                status.textContent = "Falha no login: " + erro.message;
+                mostrarResultado({
+                    erro: erro.message,
+                    dica: "Confira se o Gateway está rodando na porta 5000."
+                });
+            }
+        });
+
+        async function consultarRota(rota) {
+            if (!token) {
+                status.textContent = "Faça login antes de consultar a API.";
+                return;
+            }
+
+            status.textContent = `Consultando ${rota}...`;
+
+            try {
+                const resposta = await fetch(`${API_URL}${rota}`, {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+
+                const dados = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        dados.mensagem || `Erro HTTP ${resposta.status}`
+                    );
+                }
+
+                status.textContent = `Consulta de ${rota} concluída com sucesso.`;
+                mostrarResultado(dados);
+            } catch (erro) {
+                status.textContent = "Erro na consulta: " + erro.message;
+                mostrarResultado({
+                    erro: erro.message,
+                    dica: "Confira se o Gateway e a API correspondente estão rodando."
+                });
+            }
+        }
+
+        livrosBtn.addEventListener("click", () => {
+            consultarRota("/api/livros");
+        });
+
+        usuariosBtn.addEventListener("click", () => {
+            consultarRota("/api/usuarios");
+        });
+
+        logoutBtn.addEventListener("click", () => {
+            token = null;
+            atualizarInterface();
+            status.textContent = "Você saiu. Faça login para consultar novamente.";
+            mostrarResultado("Nenhuma consulta realizada.");
+        });
+
+        atualizarInterface();
+    </script>
+</body>
+</html>
