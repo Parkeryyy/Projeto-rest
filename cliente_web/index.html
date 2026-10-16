@@ -113,6 +113,40 @@
             font-size: 14px;
         }
 
+        .lista {
+            display: grid;
+            gap: 12px;
+        }
+
+        .item {
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+
+        .item h3 {
+            margin: 0 0 6px;
+            color: #1e40af;
+        }
+
+        .item p {
+            margin: 0;
+            color: #64748b;
+        }
+
+        .mensagem {
+            padding: 12px;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
+        .erro {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
         footer {
             text-align: center;
             padding: 20px;
@@ -180,8 +214,9 @@
         </section>
 
         <section class="card">
-            <h2>📄 Resposta da API</h2>
-            <pre id="resultado">Os resultados aparecerão aqui.</pre>
+            <div id="resultado">
+                <p class="hint">Faça login e escolha o que deseja consultar.</p>
+            </div>
         </section>
     </main>
 
@@ -206,8 +241,55 @@
             usuariosBtn.disabled = !token;
         }
 
-        function mostrarResultado(dados) {
-            resultado.textContent = JSON.stringify(dados, null, 2);
+        function mostrarResultado(dados, tipo = "mensagem") {
+            resultado.replaceChildren();
+
+            if (tipo === "usuarios" || tipo === "livros") {
+                const titulo = document.createElement("h2");
+                titulo.textContent = tipo === "usuarios"
+                    ? "👥 Usuários"
+                    : "📚 Livros";
+
+                const lista = document.createElement("div");
+                lista.className = "lista";
+
+                const itens = Array.isArray(dados.dados) ? dados.dados : [];
+
+                if (itens.length === 0) {
+                    const mensagem = document.createElement("p");
+                    mensagem.className = "hint";
+                    mensagem.textContent = "Nenhum registro encontrado.";
+                    lista.appendChild(mensagem);
+                }
+
+                itens.forEach((item) => {
+                    const cartao = document.createElement("div");
+                    cartao.className = "item";
+
+                    const nome = document.createElement("h3");
+                    nome.textContent = item.nome || item.titulo || "Item";
+
+                    const detalhe = document.createElement("p");
+                    detalhe.textContent = `ID: ${item.id ?? "Não informado"}`;
+
+                    cartao.append(nome, detalhe);
+                    lista.appendChild(cartao);
+                });
+
+                resultado.append(titulo, lista);
+                return;
+            }
+
+            const mensagem = document.createElement("p");
+            mensagem.className = tipo === "erro"
+                ? "mensagem erro"
+                : "mensagem";
+
+            mensagem.textContent = typeof dados === "string"
+                ? dados
+                : dados.mensagem || dados.erro || "Operação concluída.";
+
+            resultado.appendChild(mensagem);
         }
 
         loginForm.addEventListener("submit", async (event) => {
@@ -241,8 +323,7 @@
                 atualizarInterface();
                 status.textContent = "Login realizado! Token JWT recebido.";
                 mostrarResultado({
-                    mensagem: "Login realizado com sucesso.",
-                    autenticado: true
+                    mensagem: "Login realizado com sucesso."
                 });
             } catch (erro) {
                 token = null;
@@ -280,7 +361,10 @@
                 }
 
                 status.textContent = `Consulta de ${rota} concluída com sucesso.`;
-                mostrarResultado(dados);
+                mostrarResultado(
+                    dados,
+                    rota === "/api/usuarios" ? "usuarios" : "livros"
+                );
             } catch (erro) {
                 status.textContent = "Erro na consulta: " + erro.message;
                 mostrarResultado({
